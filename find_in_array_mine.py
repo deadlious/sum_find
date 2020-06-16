@@ -14,7 +14,7 @@ def measure_time(original_function):
     return new_function
 
 
-def binary_search(arr, low, high, x):
+def binary_search(arr, low, high, x, esc=False):
     # Check base case
     if high >= low:
 
@@ -27,14 +27,16 @@ def binary_search(arr, low, high, x):
             # If element is smaller than mid, then it can only
         # be present in left subarray
         elif arr[mid] > x:
-            return binary_search(arr, low, mid - 1, x)
+            return binary_search(arr, low, mid - 1, x, esc)
 
             # Else the element can only be present in right subarray
         else:
-            return binary_search(arr, mid + 1, high, x)
+            return binary_search(arr, mid + 1, high, x, esc)
 
     else:
         # Element is not present in the array
+        if esc:
+            return low if high < 0 else high
         return -1
 
 
@@ -42,12 +44,12 @@ def binary_search(arr, low, high, x):
 def get_random_array():
     arr = list()
     seed(datetime.now())
-    for b in range(randint(5000, 10000)):
-        arr.append(randint(1, 20000))
+    for b in range(randint(50000, 100000)):
+        arr.append(randint(1, 1000000))
     return arr
 
 
-# @measure_time
+@measure_time
 def get_sorted_array(ar=None):
     if ar is None:
         ar = get_random_array()
@@ -55,75 +57,93 @@ def get_sorted_array(ar=None):
 
 
 @measure_time
-def find_num_evb(suma, ar=None, is_sorted=False):
-    br = list()
+def find_num_evb(suma, ar=None, is_sorted=False, prnt=False):
     if not is_sorted or ar is None:
         ar = get_sorted_array(ar)
-    for i in ar:
-        if i < suma:
-            br.append(i)
-        else:
-            break
-    b = len(br) - 1
-    if b < 0:
+    b = binary_search(ar, 0, len(ar) - 1, suma, True)
+    if b <= 0:
+        if prnt:
+            print('e: 404 Not Found')
         return False
     a = 0
     while True:
-        s1 = br[a] + br[b]
+        s1 = ar[a] + ar[b]
         if s1 == suma:
-            # print('Found a&b @', a, ',', b, ' = ', br[a], ',', br[b])
+            if prnt:
+                print('e: Found a&b @', a, ',', b, ' = ', ar[a], ',', ar[b])
             return True
         elif s1 < suma:
             a += 1
         else:
             b -= 1
-        if b == a or b < a or b < 1 or a == len(br):
-            # print('404 Not Found')
+        if b == a or b < a:
+            if prnt:
+                print('e: 404 Not Found')
             return False
 
 
 @measure_time
-def find_num_bin(suma, ar=None, is_sorted=False):
+def find_num_bin(suma, ar=None, is_sorted=False, prnt=False):
     if not is_sorted or ar is None:
         ar = get_sorted_array(ar)
     l = len(ar) - 1
     for k, v in enumerate(ar):
         b = suma - v
-        if b < 1:
-            # print("404 Not Found")
+        if b < v or k == l:
             return False
         if ar[l] == b:
-            # print('Found a&b @', "-0", ',', l, ' = ', v, ',', ar[l])
+            if prnt:
+                print('b: Found a&b @', k, ',', l, ' = ', v, ',', ar[l])
             return True
-        if (binary_search(ar, k, l, b)) > -1:
-            # print('Found a&b @', k, ',', f, ' = ', v, ',', ar[f])
+        l = binary_search(ar, k + 1, l, b, True)
+        if ar[l] == b:
+            if prnt:
+                print('b: Found a&b @', k, ',', l, ' = ', v, ',', ar[l])
             return True
-    # print("404 Not Found")
+    if prnt:
+        print("b: 404 Not Found")
     return False
 
 
+@measure_time
 def compare_sums(times=1000):
     evb_time = timedelta()
     bin_time = timedelta()
+    srt_time = timedelta()
     evb_wins, bin_wins = 0, 0
+    found_a, found_b = 0, 0
     for i in range(times):
-        ar = get_sorted_array()
-        suma = randint(2, 39999)
-        suc_a, a = find_num_evb(suma, ar, True)
+        ar, t = get_sorted_array()
+        srt_time += t
+        suma = randint(2, 1000000)
+        # print('Sum to find: ', suma)
         suc_b, b = find_num_bin(suma, ar, True)
+        suc_a, a = find_num_evb(suma, ar, True)
         evb_time = evb_time + a
         bin_time = bin_time + b
-
-        if (a < b and suc_a) or ((not suc_b) and a < b):
+        if suc_a:
+            found_a += 1
+        if suc_b:
+            found_b += 1
+        if a < b and (suc_a or (not suc_b)):
             evb_wins += 1
-        elif (a > b and suc_b) or ((not suc_a) and a > b):
+        elif a > b and (suc_b or (not suc_a)):
             bin_wins += 1
+
+        if suc_a ^ suc_b:
+            print('Error with SUM: ', suma)
+            find_num_bin(suma, ar, True, True)
+            find_num_evb(suma, ar, True, True)
+
         # else it's a tie
 
-    print('EVB: ', evb_wins, ", AVG: ", evb_time / times)
-    print('BIN: ', bin_wins, ", AVG: ", bin_time / times)
+    print('Sort AVG: ', srt_time / times)
+    print('EVB faster: ', evb_wins, ", AVG: ", evb_time / times)
+    print('BIN faster: ', bin_wins, ", AVG: ", bin_time / times)
+    print('EVB ', found_a, ':', found_b, ' BIN')
+
 
 
 if __name__ == '__main__':
 
-    compare_sums(int(sys.argv[1]) if len(sys.argv) > 1 else 1000)
+    print('Time elpased: ', compare_sums(int(sys.argv[1]) if len(sys.argv) > 1 else 1000)[1])
